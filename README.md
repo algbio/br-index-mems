@@ -68,7 +68,7 @@ cp ../patterns.txt inputs/
 cp ../text.txt inputs/
 ./br-build inputs/patterns.txt
 ./br-build inputs/text.txt
-./bri-mem k 4 -o outputs/MEMs.txt inputs/text.txt.bri inputs/patterns.txt.bri
+./bri-mem -k 4 -o outputs/MEMs.txt inputs/text.txt.bri inputs/patterns.txt.bri
 cat outputs/MEMs.txt
 ```
 <dt>This should print MEMs i,x,d s.t. P[i..i+d-1]=T[x..x+d-1] and d>=4.</dt>
