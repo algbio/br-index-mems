@@ -61,21 +61,22 @@ make test-bri
 ```
 
 For MEM finding, you can test the following:
-cp patterns.txt build/inputs
-cp text.txt build/inputs
-cd build
+```bash
+cp ../patterns.txt inputs/
+cp ../text.txt inputs/
 ./br-build inputs/patterns.txt
 ./br-build inputs/text.txt
 ./bri-mem k 4 -o outputs/MEMs.txt inputs/text.txt.bri inputs/patterns.txt.bri
 cat outputs/MEMs.txt
-This should print MEMs i,x,d s.t. P[i..i+d-1]=T[x..x+d-1]
-In our case (note 0-based indexing):
-2,15,6
-2,65,6
-18,31,4
-1,25,10
-3,12,4
-1,60,6
+```
+<dt>This should print MEMs i,x,d s.t. P[i..i+d-1]=T[x..x+d-1].</dt>
+<dt>In our case (note 0-based indexing):</dt>
+<dt>2,15,6<dt>
+<dt>2,65,6</dt>
+<dt>18,31,4</dt>
+<dt>1,25,10</dt>
+<dt>3,12,4</dt>
+<dt>1,60,6</dt>
 
 ## Versions
 
