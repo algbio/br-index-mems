@@ -4,7 +4,8 @@
 
 New features in this fork:
 
-- Support for MEM finding 
+- Support for finding maximal exact matches (MEMs) between a set of patterns and a text
+
 
 ## About
 
@@ -54,10 +55,27 @@ make
 	<dd>runs unit tests.</dd>
 </dl>
 
-Also, you can run unit tests by
+You can run unit tests by
 ```bash
 make test-bri
 ```
+
+For MEM finding, you can test the following:
+cp patterns.txt build/inputs
+cp text.txt build/inputs
+cd build
+./br-build inputs/patterns.txt
+./br-build inputs/text.txt
+./bri-mem k 4 -o outputs/MEMs.txt inputs/text.txt.bri inputs/patterns.txt.bri
+cat outputs/MEMs.txt
+This should print MEMs i,x,d s.t. P[i..i+d-1]=T[x..x+d-1]
+In our case (note 0-based indexing):
+2,15,6
+2,65,6
+18,31,4
+1,25,10
+3,12,4
+1,60,6
 
 ## Versions
 
@@ -79,3 +97,8 @@ Cite the following paper:
 It is more desirable to cite the following papers in addition, which are the original papers of the r-index:
 - Gagie, T., Navarro, G., & Prezza, N. (2018). Optimal-time text indexing in BWT-runs bounded space. In Proceedings of the Twenty-Ninth Annual ACM-SIAM Symposium on Discrete Algorithms (pp. 1459-1477). Society for Industrial and Applied Mathematics.
 - Gagie, T., Navarro, G., & Prezza, N. (2020). Fully functional suffix trees and optimal text searching in BWT-runs bounded space. Journal of the ACM (JACM), 67(1), 1-54.
+
+MEM finding is analogous to Algorithm 11.3 at page 226 in 
+- V. Mäkinen, D. Belazzougui, F. Cunial, A. I. Tomescu: Genome-Scale Algorithm Design. Cambridge University Press, 2015.
+- See also: D. Belazzougui, F. Cunial, J. Kärkkäinen, V. Mäkinen:
+Linear-time String Indexing and Analysis in Small Space. ACM Trans. Algorithms 16(2): 17:1-17:54 (2020)
