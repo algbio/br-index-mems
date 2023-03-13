@@ -2,13 +2,9 @@
 
 ## News
 
-A refined version is here: https://github.com/U-Ar/full-br-index
+New features in this fork:
 
-New features:
-
-- **Space-efficient index construction** using Prefix-Free Parsing.
-- Pattern **contraction** operations (_left-contraction_, _right-contraction_)
-- Integration tests
+- Support for MEM finding 
 
 ## About
 
@@ -39,7 +35,7 @@ cd build
 cmake ..
 make
 ```
-6 executables will be created in the _build_ directory.
+7 executables will be created in the _build_ directory.
 <dl>
 	<dt>bri-build</dt>
 	<dd>Builds the br-index on the input text file.</dd>
@@ -52,6 +48,8 @@ make
 	<dd>Applies the seed-and-extend approach to the given pattern. Exactly matches the core region and extends with some mismatches.</dd>
 	<dt>bri-space</dt>
 	<dd>Shows the statistics of the text and the breakdown of the index space usage.</dd>
+	<dt>bri-mem</dt>
+	<dd>Finds MEMs between a collection of patterns and a text.</dd>
 	<dt>run_tests</dt>
 	<dd>runs unit tests.</dd>
 </dl>
