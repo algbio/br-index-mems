@@ -1503,6 +1503,34 @@ public:
         if (!reversed) return remap_inv[bwt[i]];
         return remap_inv[bwtR[i]];
     }
+    
+    /*
+     * check if rangeR contains more than one run
+     */
+    
+    bool is_right_maximal(br_sample_naive sample) 
+    {
+       uchar c = bwt_at(sample.rangeR.first,true);
+       br_sample_naive right = right_extension(c,sample);
+       if (sample.size() == right.size())
+          return 0;
+       else
+          return 1;
+    }
+
+    /*
+     * check if range contains more than one run
+     */
+    
+    bool is_left_maximal(br_sample_naive sample) 
+    {
+       uchar c = bwt_at(sample.rangeR.first,false);
+       br_sample_naive left = left_extension(c,sample);
+       if (sample.size() == left.size())
+          return 0;
+       else
+          return 1;
+    }
 
     /*
      * get number of runs in BWT
