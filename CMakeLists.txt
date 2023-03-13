@@ -44,6 +44,10 @@ TARGET_LINK_LIBRARIES(bri-space sdsl)
 TARGET_LINK_LIBRARIES(bri-space divsufsort)
 TARGET_LINK_LIBRARIES(bri-space divsufsort64)
 
+ADD_EXECUTABLE(bri-mem src/bri-mem.cpp)
+TARGET_LINK_LIBRARIES(bri-mem sdsl)
+TARGET_LINK_LIBRARIES(bri-mem divsufsort)
+TARGET_LINK_LIBRARIES(bri-mem divsufsort64)
 
 enable_testing()
 
