@@ -20,7 +20,7 @@ void help()
 {
 	cout << "bri-mem: locate all MEMs between patterns and text" << endl;
 
-	cout << "Usage: bri-mem [options] <index> <patterns> [<output>]" << endl;
+	cout << "Usage: bri-mem [options] <index> <patterns>" << endl;
     cout << "   -nplcp       use the version without PLCP " << endl;
     cout << "   -relax    use relaxed definition for MEMs " << endl;
 	cout << "   -k      MEM threshold" << endl;
