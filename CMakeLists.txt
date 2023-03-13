@@ -17,6 +17,9 @@ SET(CMAKE_CXX_FLAGS_RELEASE "-g -ggdb -Ofast -fstrict-aliasing -DNDEBUG -march=n
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -Ofast -fstrict-aliasing -march=native")
 
 ADD_SUBDIRECTORY(test)
+ADD_SUBDIRECTORY(inputs)
+ADD_SUBDIRECTORY(outputs)
+
 INCLUDE_DIRECTORIES(src)
 
 ADD_EXECUTABLE(bri-build src/bri-build.cpp)
