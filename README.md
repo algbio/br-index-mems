@@ -27,7 +27,7 @@ Install sdsl-lite beforehand and modify variables SDSL_INCLUDE and SDSL_LIB in _
 
 Firstly, clone the repository. Since a submodule is used ([iutest](https://github.com/srz-zumix/iutest)), recursive cloning is necessary.
 ```bash
-git clone --recursive https://github.com/U-Ar/br-index.git
+git clone --recursive https://github.com/velimakinen/br-index-mems.git
 ```
 In order to build, execute following commands: (This project is using CMake)
 ```bash
@@ -62,6 +62,8 @@ make test-bri
 
 For MEM finding, you can test the following:
 ```bash
+mkdir inputs
+mkdir outputs
 cp ../patterns.txt inputs/
 cp ../text.txt inputs/
 ./br-build inputs/patterns.txt
