@@ -12,7 +12,7 @@ using namespace std;
 ulint kappa = 1; // MEM threshold
 long allowed = 0;
 bool nplcp = false;
-bool relax = false;
+bool asymmetric = false;
 string alphabet = "";
 string output_file = "";
 
@@ -22,12 +22,13 @@ void help()
 
 	cout << "Usage: bri-mem [options] <index> <patterns>" << endl;
         cout << "   -nplcp       use the version without PLCP " << endl;
-        cout << "   -relax    use relaxed definition for MEMs " << endl;
+        cout << "   -asymmetric  use asymmetric definition for MEMs " << endl;
 	cout << "   -k      MEM threshold" << endl;
 	cout << "   -a      alphabet string with last symbol regarded as separator, default ACGT#" << endl;	
 	cout << "   -o      output file where lines i,x,d are outputed for MEMs P[i..i+d-1]=T[x..x+d-1]; " << endl;
-	cout << "           in relax mode i,x,d are outputed such that P[i..i+d] or P[i-1..i+d-1] do not " << endl;
-	cout << "           occur in T, but P[i..i+d-1] does; only one occurrence T[x..x+d-1] is reported " << endl;		
+        cout << "           in symmetric mode (default) the matches are locally maximal, i.e., P[i-1]!=T[x-1] and P[i+d]!=T[x+d] " << endl;
+	cout << "           in asymmetric mode the matches are globally maximal, i.e., P[i..i+d] or P[i-1..i+d-1] do not " << endl;
+	cout << "           occur in T; only one occurrence T[x..x+d-1] is reported in asymmetric mode" << endl;		
 	cout << "   -af     file containing alphabet " << endl;
 	cout << "   <text>      text index file (with extension .bri)" << endl;
 	cout << "   <patterns>  index file of concatenation of patterns (with extension .bri)" << endl;
@@ -48,10 +49,10 @@ bool parse_args(char** argv, int argc, int &ptr){
         nplcp = true;
 
     }
-    if (s.compare("-relax") == 0)
+    if (s.compare("-asymmetric") == 0)
     {
 
-        relax = true;
+        asymmetric = true;
 
     }
 	else if (s.compare("-k") == 0) 
@@ -152,7 +153,7 @@ void reportMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output)
 }
 
 template<class T, class TS>
-void reportPMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output)
+void reportAMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output)
 {
    std::vector<ulint>** a= new  std::vector<ulint>*[alphabet.size()];
    bool** b= new  bool*[alphabet.size()];
@@ -272,10 +273,10 @@ void find_mems(ifstream& in, ifstream& pin)
        if (d > maxMEM)
           maxMEM = d;
        if (MEM and d>=kappa and output.is_open())
-          if (!relax)
+          if (!asymmetric)
              reportMEMs<T,TS>(pidx,idx,psample,sample,d,output);
           else 
-             reportPMEMs<T,TS>(pidx,idx,psample,sample,d,output);   
+             reportAMEMs<T,TS>(pidx,idx,psample,sample,d,output);   
     }
     cout << "Maximum MEM is of length " << maxMEM << endl;
 
