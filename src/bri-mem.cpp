@@ -21,11 +21,13 @@ void help()
 	cout << "bri-mem: locate all MEMs between patterns and text" << endl;
 
 	cout << "Usage: bri-mem [options] <index> <patterns>" << endl;
-    cout << "   -nplcp       use the version without PLCP " << endl;
-    cout << "   -relax    use relaxed definition for MEMs " << endl;
+        cout << "   -nplcp       use the version without PLCP " << endl;
+        cout << "   -relax    use relaxed definition for MEMs " << endl;
 	cout << "   -k      MEM threshold" << endl;
 	cout << "   -a      alphabet string with last symbol regarded as separator, default ACGT#" << endl;	
-	cout << "   -o      output file where lines i,x,d are outputed for MEMs P[i..i+d-1]=T[x..x+d-1] " << endl;
+	cout << "   -o      output file where lines i,x,d are outputed for MEMs P[i..i+d-1]=T[x..x+d-1]; " << endl;
+	cout << "           in relax mode i,x,d are outputed such that P[i..i+d] or P[i-1..i+d-1] do not " << endl;
+	cout << "           occur in T, but P[i..i+d-1] does; only one occurrence T[x..x+d-1] is reported " << endl;		
 	cout << "   -af     file containing alphabet " << endl;
 	cout << "   <text>      text index file (with extension .bri)" << endl;
 	cout << "   <patterns>  index file of concatenation of patterns (with extension .bri)" << endl;
@@ -50,7 +52,6 @@ bool parse_args(char** argv, int argc, int &ptr){
     {
 
         relax = true;
-        cout << "Relaxed MEM reporting not yet supported." << endl;
 
     }
 	else if (s.compare("-k") == 0) 
@@ -150,6 +151,45 @@ void reportMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output)
    delete[] b;    
 }
 
+template<class T, class TS>
+void reportPMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output)
+{
+   std::vector<ulint>** a= new  std::vector<ulint>*[alphabet.size()];
+   bool** b= new  bool*[alphabet.size()];
+   TS left,right;
+   for (ulint i=0; i<alphabet.size(); i++) {
+      a[i] = new std::vector<ulint>[alphabet.size()];
+      b[i] = new bool[alphabet.size()];
+      for (ulint j=0; j<alphabet.size(); j++) {
+         right = pidx.right_extension(alphabet[j],psample);
+         if (!right.is_invalid()) {
+            left = pidx.left_extension(alphabet[i],right);
+            if (!left.is_invalid())
+               a[i][j] = pidx.locate_sample(left);
+         }   
+         b[i][j] = true; // maximal in text?         
+         right = idx.right_extension(alphabet[j],sample);
+         if (!right.is_invalid())
+            b[i][j] = false; // not right-maximal  
+         left = idx.left_extension(alphabet[i],sample);
+         if (!left.is_invalid())
+            b[i][j] = false; // not left-maximal
+      }
+   }
+   for (ulint i=0; i<alphabet.size(); i++) 
+      for (ulint j=0; j<alphabet.size(); j++)
+         if (a[i][j].size()>0 and b[i][j]) { 
+            for (ulint iii=0; iii<a[i][j].size(); iii++) 
+               output << a[i][j][iii]+1 << ","  << sample.j -sample.d << "," << d << endl;          
+         }
+   for (ulint i=0; i<alphabet.size(); i++) {
+      delete[] a[i];
+      delete[] b[i];
+   }
+   delete[] a;
+   delete[] b;    
+}
+
 template<class T,class TS>
 void find_mems(ifstream& in, ifstream& pin)
 {
@@ -232,7 +272,10 @@ void find_mems(ifstream& in, ifstream& pin)
        if (d > maxMEM)
           maxMEM = d;
        if (MEM and d>=kappa and output.is_open())
-             reportMEMs<T,TS>(pidx,idx,psample,sample,d,output);    
+          if (!relax)
+             reportMEMs<T,TS>(pidx,idx,psample,sample,d,output);
+          else 
+             reportPMEMs<T,TS>(pidx,idx,psample,sample,d,output);   
     }
     cout << "Maximum MEM is of length " << maxMEM << endl;
 
