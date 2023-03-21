@@ -2,20 +2,20 @@
 
 ## News
 
-New features in this fork:
+This is fork of br-index by Yuma Arakawa, adding support for MEM finding:
 
 - Support for finding maximal exact matches (MEMs) between a set of query patterns and a text
 - Support for finding MEMS between a set of query patterns and an elastic founder graph
 
 
-## About
+## About the root repository
 
-This repository provides the __bi-directional__ r-index (_br-index_).
+The root repository provides the __bi-directional__ r-index (_br-index_).
 
 The r-index is the compressed text index which supports efficient count(P) and locate(P).
-Its uses O(r) words of space, whose r is the number of equal-letter runs in BWT of the text.
+Its uses O(r) words of space, where r is the number of equal-letter runs in BWT of the text.
 
-The br-index we have proposed is achieved by using the mechanism of the r-index but adding new structures. It allows for bi-directional extension of patterns, _left-extension_ and _right-extension_. Also, you can locate all the occurrences of the current pattern at any step of the search.
+The br-index is achieved by using the mechanism of the r-index but adding new structures. It allows for bi-directional extension of patterns, _left-extension_ and _right-extension_. Also, you can locate all the occurrences of the current pattern at any step of the search.
 
 ## System Requirements
 
@@ -83,7 +83,7 @@ cat outputs/MEMs.txt
 <dt>12,3,4</dt>
 <dt>60,1,6</dt>
 
-## Versions
+## Versions (from root repository)
 
 <dl>
 	<dt>br_index.hpp (default)</dt>
@@ -97,7 +97,7 @@ cat outputs/MEMs.txt
 
 ## Citation
 
-Cite the following paper:
+Cite the following paper for br-index:
 - Arakawa, Y., Navarro, G., & Sadakane, K. (2022). Bi-Directional r-Indexes. In 33rd Annual Symposium on Combinatorial Pattern Matching (CPM 2022). Schloss Dagstuhl-Leibniz-Zentrum für Informatik.
 
 It is more desirable to cite the following papers in addition, which are the original papers of the r-index:
