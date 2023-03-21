@@ -2,7 +2,7 @@
 
 ## News
 
-This is fork of br-index by Yuma Arakawa, adding support for MEM finding:
+This is fork of Yuma Arakawa's br-index, adding support for MEM finding:
 
 - Support for finding maximal exact matches (MEMs) between a set of query patterns and a text
 - Support for finding MEMS between a set of query patterns and an elastic founder graph
