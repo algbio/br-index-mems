@@ -4,8 +4,8 @@ PROJECT(br-index CXX)
 
 FIND_PACKAGE(Git QUIET)
 
-SET(SDSL_INCLUDE "~/sdsl/include") #SDSL headeres
-SET(SDSL_LIB "~/sdsl/lib") #SDSL lib
+SET(SDSL_INCLUDE "~/include") #SDSL headeres
+SET(SDSL_LIB "~/lib") #SDSL lib
 
 INCLUDE_DIRECTORIES(${SDSL_INCLUDE}) 
 LINK_DIRECTORIES(${SDSL_LIB}) 
@@ -49,6 +49,11 @@ ADD_EXECUTABLE(bri-mem src/bri-mem.cpp)
 TARGET_LINK_LIBRARIES(bri-mem sdsl)
 TARGET_LINK_LIBRARIES(bri-mem divsufsort)
 TARGET_LINK_LIBRARIES(bri-mem divsufsort64)
+
+ADD_EXECUTABLE(bri-mem-efg src/bri-mem-efg.cpp)
+TARGET_LINK_LIBRARIES(bri-mem-efg sdsl)
+TARGET_LINK_LIBRARIES(bri-mem-efg divsufsort)
+TARGET_LINK_LIBRARIES(bri-mem-efg divsufsort64)
 
 enable_testing()
 
