@@ -18,20 +18,20 @@ string output_file = "";
 
 void help()
 {
-	cout << "bri-mem: locate all MEMs between patterns and text" << endl;
+	cout << "bri-mem: locate all MEMs between queries and text" << endl;
 
-	cout << "Usage: bri-mem [options] <index> <patterns>" << endl;
-        cout << "   -nplcp       use the version without PLCP " << endl;
-        cout << "   -asymmetric  use asymmetric definition for MEMs " << endl;
+	cout << "Usage: bri-mem [options] <index> <queries>" << endl;
+        cout << "   --nplcp       use the version without PLCP " << endl;
+        cout << "   --asymmetric  use asymmetric definition for MEMs " << endl;
 	cout << "   -k      MEM threshold" << endl;
 	cout << "   -a      alphabet string with last symbol regarded as separator, default ACGT#" << endl;	
-	cout << "   -o      output file where lines i,x,d are outputed for MEMs P[i..i+d-1]=T[x..x+d-1]; " << endl;
-        cout << "           in symmetric mode (default) the matches are locally maximal, i.e., P[i-1]!=T[x-1] and P[i+d]!=T[x+d] " << endl;
-	cout << "           in asymmetric mode the matches are globally maximal, i.e., P[i..i+d] or P[i-1..i+d-1] do not " << endl;
+	cout << "   -o      output file where lines x,i,d are outputed for MEMs Q[i..i+d-1]=T[x..x+d-1]; " << endl;
+        cout << "           in symmetric mode (default) the matches are locally maximal, i.e., Q[i-1]!=T[x-1] and Q[i+d]!=T[x+d] " << endl;
+	cout << "           in asymmetric mode the matches are globally maximal, i.e., Q[i..i+d] or Q[i-1..i+d-1] do not " << endl;
 	cout << "           occur in T; only one occurrence T[x..x+d-1] is reported in asymmetric mode" << endl;		
-	cout << "   -af     file containing alphabet " << endl;
+	cout << "   -f     file containing alphabet " << endl;
 	cout << "   <text>      text index file (with extension .bri)" << endl;
-	cout << "   <patterns>  index file of concatenation of patterns (with extension .bri)" << endl;
+	cout << "   <queries>  index file of concatenation of queries (with extension .bri)" << endl;
 	cout << "               concatenation format: #AGGATG#AGATGT#, where # is separator symbol" << endl;		
 	exit(0);
 }
@@ -43,13 +43,13 @@ bool parse_args(char** argv, int argc, int &ptr){
 	string s(argv[ptr]);
 	ptr++;
 
-    if (s.compare("-nplcp") == 0)
+    if (s.compare("--nplcp") == 0)
     {
 
         nplcp = true;
 
     }
-    if (s.compare("-asymmetric") == 0)
+    if (s.compare("--asymmetric") == 0)
     {
 
         asymmetric = true;
@@ -87,11 +87,11 @@ bool parse_args(char** argv, int argc, int &ptr){
         output_file = string(argv[ptr]);  
         ptr++;
     }
-    else if (s.compare("-af") == 0)
+    else if (s.compare("-f") == 0)
     {
 
 		if(ptr>=argc-1){
-			cout << "Error: missing parameter after -af option." << endl;
+			cout << "Error: missing parameter after -f option." << endl;
 			help();
 		}
         string alphabet_file="";
@@ -109,7 +109,7 @@ bool parse_args(char** argv, int argc, int &ptr){
 }
 
 template<class T, class TS>
-void reportMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output)
+void reportMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output)
 {
    // a bit naive implementation of the cross product 
    std::vector<ulint>** a= new  std::vector<ulint>*[alphabet.size()];
@@ -119,11 +119,11 @@ void reportMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output)
       a[i] = new std::vector<ulint>[alphabet.size()];
       b[i] = new std::vector<ulint>[alphabet.size()];      
       for (ulint j=0; j<alphabet.size(); j++) {
-         right = pidx.right_extension(alphabet[j],psample);
+         right = qidx.right_extension(alphabet[j],qsample);
          if (!right.is_invalid()) {
-            left = pidx.left_extension(alphabet[i],right);
+            left = qidx.left_extension(alphabet[i],right);
             if (!left.is_invalid())
-               a[i][j] = pidx.locate_sample(left);
+               a[i][j] = qidx.locate_sample(left);
          }   
          right = idx.right_extension(alphabet[j],sample);
          if (!right.is_invalid()) {
@@ -141,7 +141,7 @@ void reportMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output)
                   if (b[ii][jj].size()>0 and i!=ii and j!=jj) {
                      for (ulint iii=0; iii<a[i][j].size(); iii++) 
                         for (ulint jjj=0; jjj<b[ii][jj].size(); jjj++)
-                            output << a[i][j][iii]+1 << "," << b[ii][jj][jjj]+1 << "," << d << endl;          
+                            output <<  b[ii][jj][jjj]+1 << "," << a[i][j][iii]+1 << "," << d << endl;          
                   }
          }
    for (ulint i=0; i<alphabet.size(); i++) {
@@ -153,7 +153,7 @@ void reportMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output)
 }
 
 template<class T, class TS>
-void reportAMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output)
+void reportAMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output)
 {
    std::vector<ulint>** a= new  std::vector<ulint>*[alphabet.size()];
    bool** b= new  bool*[alphabet.size()];
@@ -162,11 +162,11 @@ void reportAMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output
       a[i] = new std::vector<ulint>[alphabet.size()];
       b[i] = new bool[alphabet.size()];
       for (ulint j=0; j<alphabet.size(); j++) {
-         right = pidx.right_extension(alphabet[j],psample);
+         right = qidx.right_extension(alphabet[j],qsample);
          if (!right.is_invalid()) {
-            left = pidx.left_extension(alphabet[i],right);
+            left = qidx.left_extension(alphabet[i],right);
             if (!left.is_invalid())
-               a[i][j] = pidx.locate_sample(left);
+               a[i][j] = qidx.locate_sample(left);
          }   
          b[i][j] = true; // maximal in text?         
          right = idx.right_extension(alphabet[j],sample);
@@ -192,7 +192,7 @@ void reportAMEMs(T pidx, T idx, TS psample, TS sample, ulint d, ofstream& output
 }
 
 template<class T,class TS>
-void find_mems(ifstream& in, ifstream& pin)
+void find_mems(ifstream& in, ifstream& qin)
 {
     using std::chrono::high_resolution_clock;
     using std::chrono::duration_cast;
@@ -207,18 +207,18 @@ void find_mems(ifstream& in, ifstream& pin)
 
     idx.load(in);
     
-    T pidx;
-    pidx.load(pin);
+    T qidx;
+    qidx.load(qin);
 
     cout << "Searching MEMs " << endl;
     
     TS sample(idx.get_initial_sample(true));
-    TS psample(pidx.get_initial_sample(true));
+    TS qsample(qidx.get_initial_sample(true));
     pair <TS,TS> node;
     std::stack<pair <TS,TS>> S; // interval pairs
     std::stack<ulint> dS; // string depths
     node.first = sample;
-    node.second = psample;
+    node.second = qsample;
     // node is now suffix tree root
     S.push(node);
     ulint d = 0;
@@ -245,13 +245,13 @@ void find_mems(ifstream& in, ifstream& pin)
        d = dS.top();
        dS.pop();
        sample = node.first;
-       psample = node.second;
+       qsample = node.second;
        if (sample.is_invalid() or 
-          psample.is_invalid()) { 
+          qsample.is_invalid()) { 
           continue; // not a valid range
        }
-       if ((!idx.is_right_maximal(sample) and !pidx.is_right_maximal(psample)) and 
-           idx.bwt_at(sample.rangeR.first,true)==pidx.bwt_at(psample.rangeR.first,true) ) {
+       if ((!idx.is_right_maximal(sample) and !qidx.is_right_maximal(qsample)) and 
+           idx.bwt_at(sample.rangeR.first,true)==qidx.bwt_at(qsample.rangeR.first,true) ) {
           continue; // implicit node reached
        }
 
@@ -263,20 +263,20 @@ void find_mems(ifstream& in, ifstream& pin)
        // last alphabet symbol regarded as separator
        for (ulint j=0;j<alphabet.size()-1; j++) { 
           node.first = idx.left_extension(alphabet[j],sample); 
-          node.second = pidx.left_extension(alphabet[j],psample);   
+          node.second = qidx.left_extension(alphabet[j],qsample);   
           S.push(node);       
           dS.push(d+1);
           // range not splitting, no MEM reported
-          if (sample.size()+psample.size()==node.first.size()+node.second.size()) 
+          if (sample.size()+qsample.size()==node.first.size()+node.second.size()) 
              MEM = 0;
        }
        if (d > maxMEM)
           maxMEM = d;
        if (MEM and d>=kappa and output.is_open())
           if (!asymmetric)
-             reportMEMs<T,TS>(pidx,idx,psample,sample,d,output);
+             reportMEMs<T,TS>(qidx,idx,qsample,sample,d,output);
           else 
-             reportAMEMs<T,TS>(pidx,idx,psample,sample,d,output);   
+             reportAMEMs<T,TS>(qidx,idx,qsample,sample,d,output);   
     }
     cout << "Maximum MEM is of length " << maxMEM << endl;
 
@@ -299,21 +299,21 @@ int main(int argc, char** argv)
        parse_args(argv, argc, ptr);
 
     string idx_file(argv[ptr]);
-    string patt_file(argv[ptr+1]);
+    string query_file(argv[ptr+1]);
     
     cout << "Loading br-indexes" << endl;
 
     ifstream in(idx_file);
-    ifstream pin(patt_file);
+    ifstream qin(query_file);
     
     if (nplcp) {
-       find_mems<br_index_nplcp<>,br_sample_nplcp >(in, pin);
+       find_mems<br_index_nplcp<>,br_sample_nplcp >(in, qin);
     }
     else {
-       find_mems<br_index<>,br_sample >(in, pin);
+       find_mems<br_index<>,br_sample >(in, qin);
     }
 
     in.close();
-    pin.close();
+    qin.close();
 
 }
