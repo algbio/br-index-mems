@@ -1,10 +1,11 @@
-# br-index
+# br-index-mems
 
 ## News
 
 New features in this fork:
 
-- Support for finding maximal exact matches (MEMs) between a set of patterns and a text
+- Support for finding maximal exact matches (MEMs) between a set of query patterns and a text
+- Support for finding MEMS between a set of query patterns and an elastic founder graph
 
 
 ## About
@@ -36,7 +37,7 @@ cd build
 cmake ..
 make
 ```
-7 executables will be created in the _build_ directory.
+8 executables will be created in the _build_ directory.
 <dl>
 	<dt>bri-build</dt>
 	<dd>Builds the br-index on the input text file.</dd>
@@ -51,6 +52,8 @@ make
 	<dd>Shows the statistics of the text and the breakdown of the index space usage.</dd>
 	<dt>bri-mem</dt>
 	<dd>Finds MEMs between a collection of patterns and a text.</dd>
+	<dt>bri-mem-efg</dt>
+	<dd>Finds MEMs between a collection of patterns and an elastic founder graph.</dd>
 	<dt>run_tests</dt>
 	<dd>runs unit tests.</dd>
 </dl>
@@ -71,14 +74,14 @@ cp ../text.txt inputs/
 ./bri-mem -k 4 -o outputs/MEMs.txt inputs/text.txt.bri inputs/patterns.txt.bri
 cat outputs/MEMs.txt
 ```
-<dt>This should print MEMs i,x,d s.t. P[i..i+d-1]=T[x..x+d-1] and d>=4.</dt>
+<dt>This should print MEMs x,i,d s.t. P[i..i+d-1]=T[x..x+d-1] and d>=4.</dt>
 <dt>In our case (note 0-based indexing):</dt>
-<dt>2,15,6<dt>
-<dt>2,65,6</dt>
-<dt>18,31,4</dt>
-<dt>1,25,10</dt>
-<dt>3,12,4</dt>
-<dt>1,60,6</dt>
+<dt>15,2,6<dt>
+<dt>65,2,6</dt>
+<dt>31,18,4</dt>
+<dt>25,1,10</dt>
+<dt>12,3,4</dt>
+<dt>60,1,6</dt>
 
 ## Versions
 
@@ -105,3 +108,7 @@ MEM finding is analogous to Algorithm 11.3 at page 226 in
 - V. Mäkinen, D. Belazzougui, F. Cunial, A. I. Tomescu: Genome-Scale Algorithm Design. Cambridge University Press, 2015.
 - See also: D. Belazzougui, F. Cunial, J. Kärkkäinen, V. Mäkinen:
 Linear-time String Indexing and Analysis in Small Space. ACM Trans. Algorithms 16(2): 17:1-17:54 (2020)
+
+MEM finding on EFGs is analogous to Theorem 13 in 
+- Nicola Rizzo, Manuel Cáceres, Veli Mäkinen: Chaining of Maximal Exact Matches in Graphs. https://arxiv.org/abs/2302.01748
+
