@@ -111,5 +111,5 @@ Linear-time String Indexing and Analysis in Small Space. ACM Trans. Algorithms 1
 
 MEM finding on EFGs is analogous to Theorem 13 in 
 - Nicola Rizzo, Manuel Cáceres, Veli Mäkinen: Chaining of Maximal Exact Matches in Graphs. https://arxiv.org/abs/2302.01748
-- Current version implements only MEM finding on paths P of length at most 3 nodes, so if k>min |label(P)|, some MEMs may not be reported  
+- Current version implements only MEM finding on paths of length at most 3 nodes, so if k>min_{paths P of 3 nodes} |label(P)|, some MEMs may not be reported  
 
