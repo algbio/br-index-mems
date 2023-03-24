@@ -2,15 +2,17 @@
 #include <chrono>
 #include <cstdlib>
 
+#include <sdsl/bit_vectors.hpp>
 #include "br_index.hpp"
 #include "br_index_nplcp.hpp"
 #include "utils.hpp"
 
 using namespace bri;
 using namespace std;
+using namespace sdsl;
 
+// Global variables assigned with optional parameters
 ulint kappa = 1; // MEM threshold
-long allowed = 0;
 bool nplcp = false;
 bool asymmetric = false;
 bool filter = false;
@@ -24,7 +26,7 @@ void help()
 	cout << "Usage: bri-mem-efg [options] <text> <queries> <efg>" << endl;
     cout << "   --nplcp       use the version without PLCP " << endl;
     cout << "   --asymmetric  use asymmetric definition for MEMs " << endl;
-	cout << "   --filter      filter out MEMs that do not occur in text " << endl;
+	cout << "   --filter      filter out MEMs that do not occur in <text> " << endl;
 	cout << "   -k      MEM threshold" << endl;
 	cout << "   -a      alphabet string with last symbol regarded as separator, default ACGT#" << endl;	
 	cout << "   -o      output file where lines x,i,d are outputed for MEMs Q[i..i+d-1]=T[x..x+d-1]; " << endl;
@@ -119,7 +121,7 @@ bool parse_args(char** argv, int argc, int &ptr){
 }
 
 template<class T, class TS>
-void reportMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output, bool *Bsuffix = NULL, bool* Bprefix = NULL)
+void reportMEMs(T idx, T qidx, TS sample, TS qsample, ulint d, ofstream& output, bit_vector Bsuffix = bit_vector(), bit_vector Bprefix = bit_vector())
 {
    // a bit naive implementation of the cross product 
    std::vector<ulint>** a= new  std::vector<ulint>*[alphabet.size()];
@@ -151,7 +153,7 @@ void reportMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output,
                   if (b[ii][jj].size()>0 and i!=ii and j!=jj) {
                      for (ulint iii=0; iii<a[i][j].size(); iii++) 
                         for (ulint jjj=0; jjj<b[ii][jj].size(); jjj++)
-                           if (Bsuffix==NULL or Bprefix==NULL or (Bsuffix[b[ii][jj][jjj]+1] and Bprefix[b[ii][jj][jjj]+d]))
+                           if (Bsuffix.size()==0 or Bprefix.size()==0 or (Bsuffix[b[ii][jj][jjj]+1] and Bprefix[b[ii][jj][jjj]+d]))
                               output << b[ii][jj][jjj]+1 << "," << a[i][j][iii]+1 << "," << d << endl;          
                   }
          }
@@ -164,7 +166,7 @@ void reportMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output,
 }
 
 template<class T, class TS>
-void reportAMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output)
+void reportAMEMs(T idx, T qidx, TS sample, TS qsample, ulint d, ofstream& output)
 {
    std::vector<ulint>** a= new  std::vector<ulint>*[alphabet.size()];
    bool** b= new  bool*[alphabet.size()];
@@ -202,6 +204,84 @@ void reportAMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output
    delete[] b;    
 }
 
+
+template<class T, class TS>
+ulint explore_mems(T tidx, T qidx, T fidx, ofstream& output, bool f = false, bit_vector Bsuffix = bit_vector(), bit_vector Bprefix = bit_vector())
+{
+    TS sample(tidx.get_initial_sample(true));
+    TS qsample(qidx.get_initial_sample(true));
+    pair <TS,TS> node;
+    std::stack<pair <TS,TS>> S; // interval pairs
+    std::stack<ulint> dS; // string depths
+    node.first = sample;
+    node.second = qsample;
+    // node is now suffix tree root
+    S.push(node);
+    ulint d = 0;
+    dS.push(d); 
+    bool MEM;
+    ulint maxMEM = 0;    
+    
+    TS fsample;
+    if (f)
+       fsample = fidx.get_initial_sample(true);
+         
+    std::stack<TS> fS; // filter text index range
+    if (f)
+       fS.push(fsample);
+     
+    while (!S.empty()) {
+       node = S.top();
+       S.pop();
+       d = dS.top();
+       dS.pop();
+       sample = node.first;
+       qsample = node.second;
+       if (f) {
+          fsample = fS.top();
+          fS.pop();
+       }
+       
+       if (sample.is_invalid() or 
+          qsample.is_invalid() or
+          (f and fsample.is_invalid())) { 
+          continue; // not a valid range
+       }
+       if ((!tidx.is_right_maximal(sample) and !qidx.is_right_maximal(qsample)) and 
+           tidx.bwt_at(sample.rangeR.first,true)==qidx.bwt_at(qsample.rangeR.first,true) ) {
+          continue; // implicit node reached
+       }
+
+       MEM = 1;
+       // Taking Weiner links from current node to visit nodes at string depth++
+       // TODO: Push the largest interval first to limit the size of the stack
+       // TODO: use as alphabet the distinct symbols appearing in the range
+
+       // last alphabet symbol regarded as separator
+       for (ulint j=0;j<alphabet.size()-1; j++) { 
+          node.first = tidx.left_extension(alphabet[j],sample); 
+          node.second = qidx.left_extension(alphabet[j],qsample);   
+          S.push(node);       
+          dS.push(d+1);
+          if (f) {
+             fS.push(fidx.left_extension(alphabet[j],fsample));
+          }
+          
+          // range not splitting, no MEM reported
+          if (sample.size()+qsample.size()==node.first.size()+node.second.size()) 
+             MEM = 0;
+       }
+       if (d > maxMEM)
+          maxMEM = d;
+       if (MEM and d>=kappa and output.is_open())
+          if (!asymmetric)
+             reportMEMs<T,TS>(tidx,qidx,sample,qsample,d,output,Bsuffix,Bprefix);
+          else 
+             reportAMEMs<T,TS>(tidx,qidx,sample,qsample,d,output);   
+    }
+    return maxMEM;
+}
+
 template<class T,class TS>
 void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in)
 {
@@ -212,7 +292,7 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in)
     using std::chrono::microseconds;
 
 
-    auto t1 = high_resolution_clock::now();
+    auto tstart = high_resolution_clock::now();
     string header;
     getline(efg_in,header); // header >nodes
     string nodes;
@@ -231,20 +311,18 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in)
     string paths_without_gt(paths);    
     paths_without_gt.erase(std::remove(paths_without_gt.begin(), paths_without_gt.end(), '>'), paths_without_gt.end());
 
-    
-    T nidx = T(nodes_without_gt);
-    T eidx = T(edges_without_gt);
-    T pidx = T(paths_without_gt);
-    
-    // TODO: use sdsl bitvectors instead
-    bool* Be_suffix = new bool[edges_without_gt.size()];
+    //bool* Be_suffix = new bool[edges_without_gt.size()];
+    bit_vector Be_suffix(edges_without_gt.size(),0);
     //bool* Be_suffix_bwt = new bool[edges_without_gt.size()+1];    
-    bool* Be_prefix = new bool[edges_without_gt.size()];    
+    //bool* Be_prefix = new bool[edges_without_gt.size()];    
+    bit_vector Be_prefix(edges_without_gt.size(),0);    
     //bool* Be_prefix_bwt = new bool[edges_without_gt.size()+1];        
-    bool* Bt_suffix = new bool[paths_without_gt.size()];
-    //bool* Bt_suffix_bwt = new bool[paths_without_gt.size()+1];  
-    bool* Bt_prefix = new bool[paths_without_gt.size()];    
-    //bool* Bt_prefix_bwt = new bool[paths_without_gt.size()+1];    
+    //bool* Bp_suffix = new bool[paths_without_gt.size()];
+    bit_vector Bp_suffix(paths_without_gt.size(),0);
+    //bool* Bp_suffix_bwt = new bool[paths_without_gt.size()+1];  
+    //bool* Bp_prefix = new bool[paths_without_gt.size()];    
+    bit_vector Bp_prefix(paths_without_gt.size(),0);    
+    //bool* Bp_prefix_bwt = new bool[paths_without_gt.size()+1];    
     
     if (alphabet.size()==0) {
        alphabet = "ACGT#";
@@ -276,19 +354,19 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in)
        if (paths[i]==alphabet[alphabet.size()-1]) { // path boundary
           suffix = true; 
           prefix = false;
-          Bt_suffix[j]=suffix;
-          Bt_prefix[j++]=prefix;          
+          Bp_suffix[j]=suffix;
+          Bp_prefix[j++]=prefix;          
        } 
        else if (paths[i]!='>') {
-          Bt_suffix[j]=suffix;
-          Bt_prefix[j++]=prefix;          
+          Bp_suffix[j]=suffix;
+          Bp_prefix[j++]=prefix;          
        }
        else if (suffix)  // first node boundary
           suffix = false;
        else // second node boundary
           prefix = true;
 
-    /* Converting bitvectors to BWT order, looks like we don't need, after all
+    /* Converting bitvectors to BWT order, not used in the naive cross-product
     j = eidx.get_terminator_position();    
     j = eidx.LF(j);
     for (ulint i=0; i<edges_without_gt.size(); i++) {
@@ -308,43 +386,43 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in)
     j = pidx.get_terminator_position();    
     j = pidx.LF(j);
     for (ulint i=0; i<paths_without_gt.size(); i++) {
-       Bt_suffix_bwt[j] = Bt_suffix[paths_without_gt.size()-i-1];
+       Bp_suffix_bwt[j] = Bp_suffix[paths_without_gt.size()-i-1];
        j = pidx.LF(j);       
     } 
-    delete[] Bt_suffix;
+    delete[] Bp_suffix;
     
     j = pidx.get_terminator_position(true);    
     j = pidx.LFR(j);
     for (ulint i=0; i<paths_without_gt.size(); i++) {
-       Bt_prefix_bwt[j] = Bt_prefix[paths_without_gt.size()-i-1];
+       Bp_prefix_bwt[j] = Bp_prefix[paths_without_gt.size()-i-1];
        j = pidx.LFR(j);       
     } 
-    delete[] Bt_prefix;
+    delete[] Bp_prefix;
     */
+          
+    // releasing memory
+    nodes.clear();
+    edges.clear();
+    paths.clear();
+
     
+    // Building indexes
+    T nidx = T(nodes_without_gt);
+    T eidx = T(edges_without_gt);
+    T pidx = T(paths_without_gt);
+
+    // releasing memory
+    nodes_without_gt.clear();
+    edges_without_gt.clear();
+    paths_without_gt.clear();
+
     T idx;
     if (filter)
        idx.load(in);
     
     T qidx;
-    qidx.load(qin);
-    
-    cout << "Searching MEMs " << endl;
-    
-    TS sample(nidx.get_initial_sample(true));
-    TS qsample(qidx.get_initial_sample(true));
-    pair <TS,TS> node;
-    std::stack<pair <TS,TS>> S; // interval pairs
-    std::stack<ulint> dS; // string depths
-    node.first = sample;
-    node.second = qsample;
-    // node is now suffix tree root
-    S.push(node);
-    ulint d = 0;
-    dS.push(d); 
-    bool MEM;
-    ulint maxMEM = 0;   
-   
+    qidx.load(qin);      
+
     ofstream output;
     if (output_file.size()!=0) {     
        output.open(output_file);
@@ -352,183 +430,34 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in)
           cout << "Could not open output file " << output_file << endl;
        }
     }
-    
+
+    auto tmem = high_resolution_clock::now();       
+    cout << "Exploring MEMs " << endl;
+
+    ulint maxMEM;
     output << ">nodes" << endl;
-    
-    while (!S.empty()) {
-       node = S.top();
-       S.pop();
-       d = dS.top();
-       dS.pop();
-       sample = node.first;
-       qsample = node.second;
-       if (sample.is_invalid() or 
-          qsample.is_invalid()) { 
-          continue; // not a valid range
-       }
-       if ((!nidx.is_right_maximal(sample) and !qidx.is_right_maximal(qsample)) and 
-           nidx.bwt_at(sample.rangeR.first,true)==qidx.bwt_at(qsample.rangeR.first,true) ) {
-          continue; // implicit node reached
-       }
-
-       MEM = 1;
-       // Taking Weiner links from current node to visit nodes at string depth++
-       // TODO: Push the largest interval first to limit the size of the stack
-       // TODO: use as alphabet the distinct symbols appearing in the range
-
-       // last alphabet symbol regarded as separator
-       for (ulint j=0;j<alphabet.size()-1; j++) { 
-          node.first = nidx.left_extension(alphabet[j],sample); 
-          node.second = qidx.left_extension(alphabet[j],qsample);   
-          S.push(node);       
-          dS.push(d+1);
-          // range not splitting, no MEM reported
-          if (sample.size()+qsample.size()==node.first.size()+node.second.size()) 
-             MEM = 0;
-       }
-       if (d > maxMEM)
-          maxMEM = d;
-       if (MEM and d>=kappa and output.is_open())
-          if (!asymmetric)
-             reportMEMs<T,TS>(qidx,nidx,qsample,sample,d,output);
-          else 
-             reportAMEMs<T,TS>(qidx,nidx,qsample,sample,d,output);   
-    }
+    maxMEM = explore_mems<T,TS>(nidx,qidx,idx,output);
     cout << "Maximum node MEM is of length " << maxMEM << endl;
-
-
-    sample = eidx.get_initial_sample(true);
-    qsample = qidx.get_initial_sample(true);
-    node.first = sample;
-    node.second = qsample;
-    // node is now suffix tree root
-    S.push(node);
-    d = 0;
-    dS.push(d); 
-    maxMEM = 0;
-    
     output << ">edges" << endl;
-    
-    while (!S.empty()) {
-       node = S.top();
-       S.pop();
-       d = dS.top();
-       dS.pop();
-       sample = node.first;
-       qsample = node.second;
-       if (sample.is_invalid() or 
-          qsample.is_invalid()) { 
-          continue; // not a valid range
-       }
-       if ((!eidx.is_right_maximal(sample) and !qidx.is_right_maximal(qsample)) and 
-           eidx.bwt_at(sample.rangeR.first,true)==qidx.bwt_at(qsample.rangeR.first,true) ) {
-          continue; // implicit node reached
-       }
-
-       MEM = 1;
-       // Taking Weiner links from current node to visit nodes at string depth++
-       // TODO: Push the largest interval first to limit the size of the stack
-       // TODO: use as alphabet the distinct symbols appearing in the range
-
-       // last alphabet symbol regarded as separator
-       for (ulint j=0;j<alphabet.size()-1; j++) { 
-          node.first = eidx.left_extension(alphabet[j],sample); 
-          node.second = qidx.left_extension(alphabet[j],qsample);   
-          S.push(node);       
-          dS.push(d+1);
-          // range not splitting, no MEM reported
-          if (sample.size()+qsample.size()==node.first.size()+node.second.size()) 
-             MEM = 0;
-       }
-       if (d > maxMEM)
-          maxMEM = d;
-       if (MEM and d>=kappa and output.is_open())
-          if (!asymmetric)
-             reportMEMs<T,TS>(qidx,eidx,qsample,sample,d,output,Be_suffix,Be_prefix);
-          else 
-             reportAMEMs<T,TS>(qidx,eidx,qsample,sample,d,output);   
-    }
+    maxMEM = explore_mems<T,TS>(eidx,qidx,idx,output,false,Be_suffix,Be_prefix);    
     cout << "Maximum edge MEM is of length " << maxMEM << endl;
-    
-    delete[] Be_suffix;    
-    delete[] Be_prefix;
-
-    sample = pidx.get_initial_sample(true);
-    qsample = qidx.get_initial_sample(true);
-    TS tsample;
-    if (filter)
-       tsample = idx.get_initial_sample(true);
-       
-    node.first = sample;
-    node.second = qsample;
-    // node is now suffix tree root
-    S.push(node);
-    d = 0;
-    dS.push(d); 
-    maxMEM = 0;
-    
-    std::stack<TS> tS; // text index range
-    if (filter)
-       tS.push(tsample);
-    
+    //delete[] Be_suffix;    
+    //delete[] Be_prefix;
     output << ">paths" << endl;
-    
-    while (!S.empty()) {
-       node = S.top();
-       S.pop();
-       d = dS.top();
-       dS.pop();
-       if (filter) {
-          tsample = tS.top();
-          tS.pop();
-       }
-       sample = node.first;
-       qsample = node.second;
-       if (sample.is_invalid() or 
-          qsample.is_invalid() or
-          (filter and tsample.is_invalid())) { 
-          continue; // not a valid range
-       }
-       if ((!pidx.is_right_maximal(sample) and !qidx.is_right_maximal(qsample)) and 
-           pidx.bwt_at(sample.rangeR.first,true)==qidx.bwt_at(qsample.rangeR.first,true)) {
-          continue; // implicit node reached
-       }
-
-       MEM = 1;
-       // Taking Weiner links from current node to visit nodes at string depth++
-       // TODO: Push the largest interval first to limit the size of the stack
-       // TODO: use as alphabet the distinct symbols appearing in the range
-
-       // last alphabet symbol regarded as separator
-       for (ulint j=0;j<alphabet.size()-1; j++) { 
-          node.first = pidx.left_extension(alphabet[j],sample); 
-          node.second = qidx.left_extension(alphabet[j],qsample);   
-          S.push(node);       
-          dS.push(d+1);
-          if (filter) {
-             tS.push(idx.left_extension(alphabet[j],tsample));
-          }
-          // range not splitting, no MEM reported
-          if (sample.size()+qsample.size()==node.first.size()+node.second.size()) 
-             MEM = 0;
-       }
-       if (d > maxMEM)
-          maxMEM = d;
-       if (MEM and d>=kappa and output.is_open())
-          if (!asymmetric)
-             reportMEMs<T,TS>(qidx,pidx,qsample,sample,d,output,Bt_suffix,Bt_prefix);
-          else 
-             reportAMEMs<T,TS>(qidx,pidx,qsample,sample,d,output);   
-    }
-    cout << "Maximum path MEM is of length " << maxMEM << endl;
-
-    delete[] Bt_suffix;    
-    delete[] Bt_prefix;
-    
+    maxMEM = explore_mems<T,TS>(pidx,qidx,idx,output,true,Bp_suffix,Bp_prefix);        
+    cout << "Maximum path MEM (spanning 3 nodes) is of length " << maxMEM << endl;
+    //delete[] Bp_suffix;    
+    //delete[] Bp_prefix;    
+    // TODO
+    // maxMEM = exploreLongPathMEMs();
+    // cout << "Maximum path MEM (spanning more than 3 nodes) is of length " << maxMEM << endl;
+       
     output.close();
 
-    auto t2 = high_resolution_clock::now();
-    ulint tot_time = duration_cast<microseconds>(t2-t1).count(); 
+    auto tend = high_resolution_clock::now();
+    ulint tot_time = duration_cast<microseconds>(tend-tstart).count(); 
+    ulint mem_time = duration_cast<microseconds>(tend-tmem).count(); 
+    cout << "MEM exploration time     : " << mem_time << " microseconds" << endl;
     cout << "Total time     : " << tot_time << " microseconds" << endl;
 }
 
