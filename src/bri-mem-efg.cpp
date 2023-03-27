@@ -150,7 +150,8 @@ void reportMEMs(T idx, T qidx, TS sample, TS qsample, ulint d, ofstream& output,
          if (a[i][j].size()>0) {
             for (ulint ii=0; ii<alphabet.size(); ii++)
                for (ulint jj=0; jj<alphabet.size(); jj++)
-                  if (b[ii][jj].size()>0 and i!=ii and j!=jj) {
+                  // The following is outputting some non-maximal matches, as we don't check if a MEM has unique left or right context in the graph
+                  if (b[ii][jj].size()>0 and (i!=ii or (i==alphabet.size()-1 and ii==alphabet.size()-1))  and (j!=jj or (j==alphabet.size()-1 and jj==alphabet.size()-1))) {
                      for (ulint iii=0; iii<a[i][j].size(); iii++) 
                         for (ulint jjj=0; jjj<b[ii][jj].size(); jjj++)
                            if (Bsuffix.size()==0 or Bprefix.size()==0 or (Bsuffix[b[ii][jj][jjj]+1] and Bprefix[b[ii][jj][jjj]+d]))
