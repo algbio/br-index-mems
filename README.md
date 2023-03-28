@@ -37,7 +37,7 @@ cd build
 cmake ..
 make
 ```
-8 executables will be created in the _build_ directory.
+9 executables will be created in the _build_ directory.
 <dl>
 	<dt>bri-build</dt>
 	<dd>Builds the br-index on the input text file.</dd>
@@ -54,6 +54,8 @@ make
 	<dd>Finds MEMs between a collection of patterns and a text.</dd>
 	<dt>bri-mem-efg</dt>
 	<dd>Finds MEMs between a collection of patterns and an elastic founder graph.</dd>
+	<dt>gfa2concats</dt>
+	<dd>Converts a graph in GFA format to node/edge/path concatenations that can be fed to bri-mem-efg</dd>
 	<dt>run_tests</dt>
 	<dd>runs unit tests.</dd>
 </dl>
