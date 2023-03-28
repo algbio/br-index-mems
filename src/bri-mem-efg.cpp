@@ -224,7 +224,7 @@ ulint explore_mems(T tidx, T qidx, T fidx, ofstream& output, bool f = false, bit
     ulint maxMEM = 0;    
     
     TS fsample;
-    if (f)
+    if (f) // using fidx as filter
        fsample = fidx.get_initial_sample(true);
          
     std::stack<TS> fS; // filter text index range
@@ -245,7 +245,7 @@ ulint explore_mems(T tidx, T qidx, T fidx, ofstream& output, bool f = false, bit
        
        if (sample.is_invalid() or 
           qsample.is_invalid() or
-          (f and fsample.is_invalid())) { 
+          (!asymmetric and f and fsample.is_invalid())) { 
           continue; // not a valid range
        }
        if ((!tidx.is_right_maximal(sample) and !qidx.is_right_maximal(qsample)) and 
@@ -277,7 +277,7 @@ ulint explore_mems(T tidx, T qidx, T fidx, ofstream& output, bool f = false, bit
        if (MEM and d>=kappa and output.is_open())
           if (!asymmetric)
              reportMEMs<T,TS>(tidx,qidx,sample,qsample,d,output,Bsuffix,Bprefix);
-          else 
+          else if (!f or fsample.is_invalid()) // MEM string not found in filter index, so not a dublicate
              reportAMEMs<T,TS>(tidx,qidx,sample,qsample,d,output);   
     }
     return maxMEM;
@@ -440,12 +440,18 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in)
     maxMEM = explore_mems<T,TS>(nidx,qidx,idx,output);
     cout << "Maximum node MEM is of length " << maxMEM << endl;
     output << ">edges" << endl;
-    maxMEM = explore_mems<T,TS>(eidx,qidx,idx,output,false,Be_suffix,Be_prefix);    
+    if (!asymmetric)
+       maxMEM = explore_mems<T,TS>(eidx,qidx,idx,output,false,Be_suffix,Be_prefix);    
+    else  // using node index as filter 
+       maxMEM = explore_mems<T,TS>(eidx,qidx,nidx,output,true,Be_suffix,Be_prefix);    
     cout << "Maximum edge MEM is of length " << maxMEM << endl;
     //delete[] Be_suffix;    
     //delete[] Be_prefix;
     output << ">paths" << endl;
-    maxMEM = explore_mems<T,TS>(pidx,qidx,idx,output,true,Bp_suffix,Bp_prefix);        
+    if (!asymmetric) // using text index as filter, if filter=true
+       maxMEM = explore_mems<T,TS>(pidx,qidx,idx,output,filter,Bp_suffix,Bp_prefix);        
+    else // using edge index as filter
+       maxMEM = explore_mems<T,TS>(pidx,qidx,eidx,output,true,Bp_suffix,Bp_prefix);           
     cout << "Maximum path MEM (spanning 3 nodes) is of length " << maxMEM << endl;
     //delete[] Bp_suffix;    
     //delete[] Bp_prefix;    

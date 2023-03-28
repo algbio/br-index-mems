@@ -55,6 +55,8 @@ TARGET_LINK_LIBRARIES(bri-mem-efg sdsl)
 TARGET_LINK_LIBRARIES(bri-mem-efg divsufsort)
 TARGET_LINK_LIBRARIES(bri-mem-efg divsufsort64)
 
+ADD_EXECUTABLE(gfa2concats src/gfa2concats.cpp)
+
 enable_testing()
 
 add_executable(run_tests test/run_tests.cpp 
