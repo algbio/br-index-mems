@@ -111,34 +111,55 @@ bool parse_args(char** argv, int argc, int &ptr){
 template<class T, class TS>
 void reportMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output)
 {
-   // a bit naive implementation of the cross product 
+   // a bit naive implementation of the cross product:
+   // factor alphabet.size()^2 slower than an optimal implementation
+    
    std::vector<ulint>** a= new  std::vector<ulint>*[alphabet.size()];
    std::vector<ulint>** b= new  std::vector<ulint>*[alphabet.size()];
+   TS** Sa= new  TS*[alphabet.size()];
+   TS** Sb= new  TS*[alphabet.size()];
+   bool** Ia= new  bool*[alphabet.size()];
+   bool** Ib= new  bool*[alphabet.size()];
+ 
    TS left,right;
    for (ulint i=0; i<alphabet.size(); i++) {
       a[i] = new std::vector<ulint>[alphabet.size()];
       b[i] = new std::vector<ulint>[alphabet.size()];      
+      Sa[i] = new TS[alphabet.size()];
+      Sb[i] = new TS[alphabet.size()];
+      Ia[i] = new bool[alphabet.size()];
+      Ib[i] = new bool[alphabet.size()];      
       for (ulint j=0; j<alphabet.size(); j++) {
+         Ia[i][j] = false;
          right = qidx.right_extension(alphabet[j],qsample);
          if (!right.is_invalid()) {
-            left = qidx.left_extension(alphabet[i],right);
-            if (!left.is_invalid())
-               a[i][j] = qidx.locate_sample(left);
+            left = qidx.left_extension(alphabet[i],right);         
+            if (!left.is_invalid()) {
+               Sa[i][j] = left;
+               Ia[i][j] = true;
+            }
          }   
+         Ib[i][j] = false;
          right = idx.right_extension(alphabet[j],sample);
          if (!right.is_invalid()) {
             left = idx.left_extension(alphabet[i],right);
-            if (!left.is_invalid())
-               b[i][j] = idx.locate_sample(left);
+            if (!left.is_invalid()) {
+               Sb[i][j] = left;
+               Ib[i][j] = true;
+            }
          }
       }
    }
    for (ulint i=0; i<alphabet.size(); i++) 
       for (ulint j=0; j<alphabet.size(); j++)
-         if (a[i][j].size()>0) {
+         if (Ia[i][j]) {
             for (ulint ii=0; ii<alphabet.size(); ii++)
                for (ulint jj=0; jj<alphabet.size(); jj++)
-                  if (b[ii][jj].size()>0 and i!=ii and j!=jj) {
+                  if (Ib[ii][jj] and i!=ii and j!=jj) {
+                     if (a[i][j].size()==0)  // locate charged on the output
+                        a[i][j] = qidx.locate_sample(Sa[i][j]);
+                     if (b[ii][jj].size()==0)  // locate charged on the output
+                        b[ii][jj] = idx.locate_sample(Sb[ii][jj]);
                      for (ulint iii=0; iii<a[i][j].size(); iii++) 
                         for (ulint jjj=0; jjj<b[ii][jj].size(); jjj++)
                             output <<  b[ii][jj][jjj]+1 << "," << a[i][j][iii]+1 << "," << d << endl;          
@@ -147,9 +168,17 @@ void reportMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output)
    for (ulint i=0; i<alphabet.size(); i++) {
       delete[] a[i];
       delete[] b[i];
+      delete[] Sa[i];
+      delete[] Sb[i];
+      delete[] Ia[i];
+      delete[] Ib[i];      
    }
    delete[] a;
    delete[] b;    
+   delete[] Sa;
+   delete[] Sb;    
+   delete[] Ia;
+   delete[] Ib;    
 }
 
 template<class T, class TS>
@@ -157,16 +186,24 @@ void reportAMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output
 {
    std::vector<ulint>** a= new  std::vector<ulint>*[alphabet.size()];
    bool** b= new  bool*[alphabet.size()];
+   TS** Sa= new  TS*[alphabet.size()];
+   bool** Ia= new  bool*[alphabet.size()];
+
    TS left,right;
    for (ulint i=0; i<alphabet.size(); i++) {
       a[i] = new std::vector<ulint>[alphabet.size()];
       b[i] = new bool[alphabet.size()];
+      Sa[i] = new TS[alphabet.size()];
+      Ia[i] = new bool[alphabet.size()];
       for (ulint j=0; j<alphabet.size(); j++) {
+         Ia[i][j] = false;
          right = qidx.right_extension(alphabet[j],qsample);
          if (!right.is_invalid()) {
             left = qidx.left_extension(alphabet[i],right);
-            if (!left.is_invalid())
-               a[i][j] = qidx.locate_sample(left);
+            if (!left.is_invalid()) {
+               Sa[i][j] = left;
+               Ia[i][j] = true;
+            }
          }   
          b[i][j] = true; // maximal in text?         
          right = idx.right_extension(alphabet[j],sample);
@@ -179,16 +216,22 @@ void reportAMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output
    }
    for (ulint i=0; i<alphabet.size(); i++) 
       for (ulint j=0; j<alphabet.size(); j++)
-         if (a[i][j].size()>0 and b[i][j]) { 
+         if (Ia[i][j] and b[i][j]) { 
+            a[i][j] = qidx.locate_sample(Sa[i][j]);
             for (ulint iii=0; iii<a[i][j].size(); iii++) 
                output << a[i][j][iii]+1 << ","  << sample.j -sample.d << "," << d << endl;          
          }
    for (ulint i=0; i<alphabet.size(); i++) {
       delete[] a[i];
       delete[] b[i];
+      delete[] Sa[i];
+      delete[] Ia[i];
+      
    }
    delete[] a;
    delete[] b;    
+   delete[] Sa;
+   delete[] Ia;
 }
 
 template<class T,class TS>
