@@ -28,7 +28,7 @@ void help()
     cout << "   --asymmetric  use asymmetric definition for MEMs " << endl;
 	cout << "   --filter      filter out MEMs that do not occur in <text> " << endl;
 	cout << "   -k      MEM threshold" << endl;
-	cout << "   -a      alphabet string with last symbol regarded as separator, default ACGT#" << endl;	
+	cout << "   -a      alphabet string with last symbol regarded as separator, default ACGTN#" << endl;	
 	cout << "   -o      output file where lines x,i,d are outputed for MEMs Q[i..i+d-1]=T[x..x+d-1]; " << endl;
     cout << "           in symmetric mode (default) the matches are locally maximal, i.e., Q[i-1]!=T[x-1] and Q[i+d]!=T[x+d] " << endl;
 	cout << "           in asymmetric mode the matches are globally maximal, i.e., Q[i..i+d] or Q[i-1..i+d-1] do not " << endl;
@@ -300,8 +300,8 @@ ulint explore_mems(T tidx, T qidx, T fidx, ofstream& output, bool f = false, bit
        // TODO: Push the largest interval first to limit the size of the stack
        // TODO: use as alphabet the distinct symbols appearing in the range
 
-       // last alphabet symbol regarded as separator
-       for (ulint j=0;j<alphabet.size()-1; j++) { 
+       // last two alphabet symbols regarded as N and separator
+       for (ulint j=0;j<alphabet.size()-2; j++) { 
           node.first = tidx.left_extension(alphabet[j],sample); 
           node.second = qidx.left_extension(alphabet[j],qsample);   
           S.push(node);       
@@ -368,7 +368,7 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in)
     //bool* Bp_prefix_bwt = new bool[paths_without_gt.size()+1];    
     
     if (alphabet.size()==0) {
-       alphabet = "ACGT#";
+       alphabet = "ACGTN#";
     }
     
     bool suffix = true;
