@@ -1,6 +1,6 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
-PROJECT(br-index CXX)
+PROJECT(br-index-mems CXX)
 
 FIND_PACKAGE(Git QUIET)
 
@@ -50,12 +50,10 @@ TARGET_LINK_LIBRARIES(bri-mem sdsl)
 TARGET_LINK_LIBRARIES(bri-mem divsufsort)
 TARGET_LINK_LIBRARIES(bri-mem divsufsort64)
 
-ADD_EXECUTABLE(bri-mem-efg src/bri-mem-efg.cpp)
-TARGET_LINK_LIBRARIES(bri-mem-efg sdsl)
-TARGET_LINK_LIBRARIES(bri-mem-efg divsufsort)
-TARGET_LINK_LIBRARIES(bri-mem-efg divsufsort64)
-
-ADD_EXECUTABLE(gfa2concats src/gfa2concats.cpp)
+ADD_EXECUTABLE(efg-mems src/efg-mems.cpp)
+TARGET_LINK_LIBRARIES(efg-mems sdsl)
+TARGET_LINK_LIBRARIES(efg-mems divsufsort)
+TARGET_LINK_LIBRARIES(efg-mems divsufsort64)
 
 enable_testing()
 

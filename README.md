@@ -37,7 +37,7 @@ cd build
 cmake ..
 make
 ```
-9 executables will be created in the _build_ directory.
+8 executables will be created in the _build_ directory.
 <dl>
 	<dt>bri-build</dt>
 	<dd>Builds the br-index on the input text file.</dd>
@@ -52,10 +52,8 @@ make
 	<dd>Shows the statistics of the text and the breakdown of the index space usage.</dd>
 	<dt>bri-mem</dt>
 	<dd>Finds MEMs between a collection of patterns and a text.</dd>
-	<dt>bri-mem-efg</dt>
+	<dt>efg-mems</dt>
 	<dd>Finds MEMs between a collection of patterns and an elastic founder graph.</dd>
-	<dt>gfa2concats</dt>
-	<dd>Converts a graph in GFA format to node/edge/path concatenations that can be fed to bri-mem-efg</dd>
 	<dt>run_tests</dt>
 	<dd>runs unit tests.</dd>
 </dl>
@@ -111,7 +109,7 @@ MEM finding is analogous to Algorithm 11.3 at page 226 in
 - See also: D. Belazzougui, F. Cunial, J. Kärkkäinen, V. Mäkinen:
 Linear-time String Indexing and Analysis in Small Space. ACM Trans. Algorithms 16(2): 17:1-17:54 (2020)
 
-MEM finding on EFGs is analogous to Theorem 13 in 
-- Nicola Rizzo, Manuel Cáceres, Veli Mäkinen: Chaining of Maximal Exact Matches in Graphs. https://arxiv.org/abs/2302.01748
+MEM finding on EFGs is described in 
+- Nicola Rizzo, Manuel Cáceres, Veli Mäkinen: Finding Maximal Exact Matches in Graphs. Submitted manuscript.
 - Current version implements only MEM finding on paths of length at most 3 nodes, so if k>min_{paths P of 3 nodes} |label(P)|, some MEMs may not be reported  
 
