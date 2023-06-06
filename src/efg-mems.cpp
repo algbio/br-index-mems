@@ -7,6 +7,8 @@
 #include <unordered_set>
 
 #include <sdsl/bit_vectors.hpp>
+#include <sdsl/int_vector.hpp>
+#include <sdsl/rmq_succinct_sada.hpp>
 #include "br_index.hpp"
 #include "utils.hpp"
 
@@ -278,7 +280,7 @@ bool is_left_maximal(T idx, TS sample)
 }
 
 template<class T, class TS>
-void reportMEMs(T idx, T qidx, TS sample, TS qsample, ulint d, ofstream& output, bit_vector Bsuffix = bit_vector(), bit_vector Bprefix = bit_vector(), ulint* d_bwt = NULL, ulint* saidx = NULL)
+void reportMEMs(T idx, T qidx, TS sample, TS qsample, ulint d, ofstream& output, sdsl::int_vector<> d_bwt = sdsl::int_vector<>(), sdsl::rmq_succinct_sada<> rmq = sdsl::rmq_succinct_sada<>(), ulint* saidx = NULL)
 { 
    // a bit naive implementation of the cross product 
    // additive factor alphabet.size()^2(t_biBWTstep+\alphabet.size()^2) slower than an optimal implementation
@@ -329,19 +331,33 @@ void reportMEMs(T idx, T qidx, TS sample, TS qsample, ulint d, ofstream& output,
                      if (b[ii][jj].size()==0)  // locate charged on the output
                         if (saidx==NULL) // no suffix array, using slower locate
                            b[ii][jj] = idx.locate_sample(Sb[ii][jj]);
-                        else 
-                           for (ulint jjj=0; jjj<Sb[ii][jj].range.second-Sb[ii][jj].range.first+1; jjj++)
-                              b[ii][jj].push_back(saidx[Sb[ii][jj].range.first+jjj]);              
-                     for (ulint iii=0; iii<a[i][j].size(); iii++)  {
-                        for (ulint jjj=0; jjj<b[ii][jj].size(); jjj++)
-                           //if (d_bwt!=NULL and d_bwt[Sb[ii][jj].range.first+jjj]<=d+1)
-                           //   output << saidx[Sb[ii][jj].range.first+jjj]+1 << "," << a[i][j][iii]+1 << "," << d << endl;
-                           //else 
-                           //   output << b[ii][jj][jjj]+1 << "," << a[i][j][iii]+1 << "," << d << endl;                           
-                              
-                           if (Bsuffix.size()==0 or Bprefix.size()==0 or (Bsuffix[b[ii][jj][jjj]+1] and Bprefix[b[ii][jj][jjj]+d])) {
-                              output << b[ii][jj][jjj]+1 << "," << a[i][j][iii]+1 << "," << d << endl;
-                           }
+                     if (d_bwt.size()==0) // no distance constraint, outputing all              
+                        for (ulint iii=0; iii<a[i][j].size(); iii++)  
+                           for (ulint jjj=0; jjj<b[ii][jj].size(); jjj++)                        
+                              output << b[ii][jj][jjj]+1 << "," << a[i][j][iii]+1 << "," << d << endl;                           
+                     else { // outputing recursively using the distance constraint
+                        pair<ulint,ulint> interval, leftinterval, rightinterval;
+                        std::stack<pair<ulint,ulint>> intervalS;
+                        interval.first = Sb[ii][jj].range.first;
+                        interval.second = Sb[ii][jj].range.second;
+                        intervalS.push(interval);
+                        ulint argmin;
+                        while (!intervalS.empty()) {
+                           interval = intervalS.top();
+                           intervalS.pop();
+                           argmin = rmq(interval.first,interval.second);
+                           if (d_bwt[argmin]<=d+1)
+                              for (ulint iii=0; iii<a[i][j].size(); iii++)
+                                 output << saidx[argmin]+1 << "," << a[i][j][iii] << "," << d << endl;
+                           leftinterval.first = interval.first;
+                           leftinterval.second = argmin-1;
+                           if (leftinterval.second>=leftinterval.first) 
+                              intervalS.push(leftinterval);
+                           rightinterval.first = argmin+1;
+                           rightinterval.second = interval.second; 
+                           if (rightinterval.second>=rightinterval.first) 
+                              intervalS.push(rightinterval);
+                        }
                      }
                   }   
          }
@@ -416,7 +432,7 @@ void reportAMEMs(T qidx, T idx, TS qsample, TS sample, ulint d, ofstream& output
 }
 
 template<class T, class TS>
-ulint explore_mems(T tidx, T qidx, T fidx, ofstream& output, bool f = false, bit_vector Bsuffix = bit_vector(), bit_vector Bprefix = bit_vector(), ulint* d_bwt = NULL, ulint* sa = NULL)
+ulint explore_mems(T tidx, T qidx, T fidx, ofstream& output, bool f = false, sdsl::int_vector<> d_bwt = sdsl::int_vector<>(), sdsl::rmq_succinct_sada<> rmq = sdsl::rmq_succinct_sada<>(), ulint* sa = NULL)
 {
     TS sample(tidx.get_initial_sample(true));
     TS qsample(qidx.get_initial_sample(true));
@@ -485,7 +501,7 @@ ulint explore_mems(T tidx, T qidx, T fidx, ofstream& output, bool f = false, bit
           maxMEM = d;
        if (MEM and d>=kappa and output.is_open())
           if (!asymmetric)
-             reportMEMs<T,TS>(tidx,qidx,sample,qsample,d,output,Bsuffix,Bprefix,d_bwt,sa);
+             reportMEMs<T,TS>(tidx,qidx,sample,qsample,d,output,d_bwt,rmq,sa);
           else if (!f or fsample.is_invalid()) // MEM string not found in filter index, so not a dublicate
              reportAMEMs<T,TS>(tidx,qidx,sample,qsample,d,output);   
     }
@@ -556,8 +572,8 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in,string path_prefix)
           suffix = false;
           prefix = true;
        }
-           
-    ulint* d_edge = new ulint[edges_without_gt.size()+1]; // distance from pos in start node to the start of end node
+    sdsl::int_vector<> d_edge; // distance from pos in start node to the start of end node
+    d_edge.resize(edges_without_gt.size()+1);        
     j = 0;
     for (ulint i=edges_without_gt.size()-1; i!=0; i--) {
        if (Be_prefix[i])
@@ -570,6 +586,9 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in,string path_prefix)
           d_edge[i]=j;
     }
     d_edge[edges_without_gt.size()]=edges_without_gt.size();
+  
+    Be_prefix.empty();
+    Be_suffix.empty();
     
     suffix = true;
     prefix = false;
@@ -590,7 +609,13 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in,string path_prefix)
        else // second node boundary
           prefix = true;
 
-    ulint* d_path = new ulint[paths_without_gt.size()+1]; // distance from pos in start node to the start of end node
+    // releasing memory
+    nodes.clear();
+    edges.clear();
+    paths.clear();
+  
+    sdsl::int_vector<> d_path; // distance from pos in start node to the start of end node
+    d_path.resize(paths_without_gt.size()+1);
     j = 0;
     for (ulint i=paths_without_gt.size()-1; i!=0; i--) {
        if (Bp_prefix[i])
@@ -603,47 +628,21 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in,string path_prefix)
           d_path[i]=j;       
     }
     d_path[paths_without_gt.size()]=paths_without_gt.size();
-
-    /* Converting bitvectors to BWT order, not used in the naive cross-product
-    j = eidx.get_terminator_position();    
-    j = eidx.LF(j);
-    for (ulint i=0; i<edges_without_gt.size(); i++) {
-       Be_suffix_bwt[j] = Be_suffix[nodes_without_gt.size()-i-1];
-       j = eidx.LF(j);       
-    } 
-    delete[] Be_suffix;
-    
-    j = eidx.get_terminator_position(true);    
-    j = eidx.LFR(j);
-    for (ulint i=0; i<edges_without_gt.size(); i++) {
-       Be_prefix_bwt[j] = Be_prefix[edges_without_gt.size()-i-1];
-       j = eidx.LFR(j);       
-    } 
-    delete[] Be_prefix; 
-   
-    j = pidx.get_terminator_position();    
-    j = pidx.LF(j);
-    for (ulint i=0; i<paths_without_gt.size(); i++) {
-       Bp_suffix_bwt[j] = Bp_suffix[paths_without_gt.size()-i-1];
-       j = pidx.LF(j);       
-    } 
-    delete[] Bp_suffix;
-    
-    j = pidx.get_terminator_position(true);    
-    j = pidx.LFR(j);
-    for (ulint i=0; i<paths_without_gt.size(); i++) {
-       Bp_prefix_bwt[j] = Bp_prefix[paths_without_gt.size()-i-1];
-       j = pidx.LFR(j);       
-    } 
-    delete[] Bp_prefix;
-    */
-
           
-    // releasing memory
-    nodes.clear();
-    edges.clear();
-    paths.clear();
+    Bp_prefix.empty();
+    Bp_suffix.empty();
 
+    /* Outputing the raw content for validation
+    ofstream n_out(path_prefix+".nodes");
+    n_out << nodes_without_gt;
+    n_out.close();
+    ofstream e_out(path_prefix+".edges");
+    e_out << edges_without_gt;
+    e_out.close();
+    ofstream p_out(path_prefix+".paths");
+    p_out << paths_without_gt;
+    p_out.close();
+    */
     
     // Building and saving indexes if they don't exist
     ifstream nidx_in(path_prefix+".nodes.bri");
@@ -670,10 +669,10 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in,string path_prefix)
        pidx = T(paths_without_gt);
        pidx.save_to_file(path_prefix+".paths"); 
     }
-    
     /* Converting d_edge and d_path to BWT order */
     // Computing suffix arrays also
-    ulint* d_edge_bwt = new ulint[edges_without_gt.size()+1];    
+    sdsl::int_vector<> d_edge_bwt;
+    d_edge_bwt.resize(edges_without_gt.size()+1);    
     ulint* sa_edge = new ulint[edges_without_gt.size()+1];
     j = eidx.get_terminator_position();   
     d_edge_bwt[j]=d_edge[0];
@@ -684,9 +683,12 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in,string path_prefix)
        sa_edge[j]=edges_without_gt.size()-i+1;
        j = eidx.LF(j);    
     } 
-    delete[] d_edge;
+    d_edge.empty();
     
-    ulint* d_path_bwt = new ulint[paths_without_gt.size()+1];    
+    sdsl::rmq_succinct_sada<> rmq_edge(&d_edge_bwt);
+    
+    sdsl::int_vector<> d_path_bwt;
+    d_path_bwt.resize(paths_without_gt.size()+1);    
     ulint* sa_path = new ulint[paths_without_gt.size()+1];    
     j = pidx.get_terminator_position(); 
     d_path_bwt[j]=d_path[0]; 
@@ -697,7 +699,9 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in,string path_prefix)
        sa_path[j]=paths_without_gt.size()-i+1;
        j = pidx.LF(j);       
     } 
-    delete[] d_path;
+    d_path.empty();
+    
+    sdsl::rmq_succinct_sada<> rmq_path(&d_path_bwt);
     
     // releasing memory
     nodes_without_gt.clear();
@@ -728,30 +732,26 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in,string path_prefix)
     cout << "Maximum node MEM is of length " << maxMEM << endl;
     output << ">edges" << endl;
     if (!asymmetric)
-       maxMEM = explore_mems<T,TS>(eidx,qidx,idx,output,false,Be_suffix,Be_prefix,d_edge_bwt,sa_edge);    
+       maxMEM = explore_mems<T,TS>(eidx,qidx,idx,output,false,d_edge_bwt,rmq_edge,sa_edge);    
     else  // using node index as filter 
-       maxMEM = explore_mems<T,TS>(eidx,qidx,nidx,output,true,Be_suffix,Be_prefix,d_edge_bwt,sa_edge);    
+       maxMEM = explore_mems<T,TS>(eidx,qidx,nidx,output,true,d_edge_bwt,rmq_edge,sa_edge);    
     cout << "Maximum edge MEM is of length " << maxMEM << endl;
-    //delete[] Be_suffix;    
-    //delete[] Be_prefix;
     output << ">paths" << endl;
     string lextpaths = "";
     string rextpaths = "";
     if (!asymmetric) // using text index as filter, if filter=true
-       maxMEM = explore_mems<T,TS>(pidx,qidx,idx,output,filter,Bp_suffix,Bp_prefix,d_path_bwt,sa_path);        
+       maxMEM = explore_mems<T,TS>(pidx,qidx,idx,output,filter,d_path_bwt,rmq_path,sa_path);        
     else // using edge index as filter
-       maxMEM = explore_mems<T,TS>(pidx,qidx,eidx,output,true,Bp_suffix,Bp_prefix,d_path_bwt,sa_path);           
+       maxMEM = explore_mems<T,TS>(pidx,qidx,eidx,output,true,d_path_bwt,rmq_path,sa_path);           
     cout << "Maximum path MEM (spanning 3 nodes) is of length " << maxMEM << endl;
-    //delete[] Bp_suffix;    
-    //delete[] Bp_prefix;    
     // TODO
     // maxMEM = exploreLongPathMEMs();
     // cout << "Maximum path MEM (spanning more than 3 nodes) is of length " << maxMEM << endl;
        
     output.close();
     
-    delete[] d_edge_bwt;
-    delete[] d_path_bwt;
+    d_edge_bwt.empty();
+    d_path_bwt.empty();
     delete[] sa_edge;
     delete[] sa_path;
     
