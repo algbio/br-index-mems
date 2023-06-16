@@ -133,6 +133,7 @@ void read_gfa(ifstream& gfa, string& nodes, string& edges, string& paths) {
     string lextnodes, rextnodes, lextedges, rextedges;
     
     string line;
+    int minlen = 1000;   
     while (getline(gfa, line)) {
         if (line.empty() || line[0] == '#') {
             continue; // Skip empty or comment lines
@@ -172,10 +173,13 @@ void read_gfa(ifstream& gfa, string& nodes, string& edges, string& paths) {
                 end_node_label = end_node_label + "_rev";
             }
             edge_labels.push_back(start_node_label + ">" +end_node_label);
+            if (start_node_label.size()+end_node_label.size()<minlen)
+               minlen = start_node_label.size()+end_node_label.size();
             edge_node_start.push_back(start_node_id);
             edge_node_end.push_back(end_node_id);
         }
     }
+    cout << "minlen " << minlen << endl;
 
     nodes = alphabet[alphabet.size()-1];
     lextnodes = alphabet[alphabet.size()-1];
@@ -218,7 +222,6 @@ void read_gfa(ifstream& gfa, string& nodes, string& edges, string& paths) {
        else
           rextedges += alphabet[alphabet.size()-1] + edge_labels[i] + alphabet[alphabet.size()-1] + alphabet[alphabet.size()-1]; //ambiguous right
     }
-    int minlen = 1000;   
     for (auto& kv1 : adj_list) {
         int node1_id = kv1.first;
         for (int node2_id : kv1.second) {
@@ -226,15 +229,12 @@ void read_gfa(ifstream& gfa, string& nodes, string& edges, string& paths) {
                 string node1_label = node_labels[node1_id - 1];
                 string node2_label = node_labels[node2_id - 1];
                 string node3_label = node_labels[node3_id - 1];
-                if (node1_label.size()+node2_label.size()+node2_label.size() < minlen)
-                   minlen = node1_label.size()+node2_label.size()+node2_label.size();
                 path_labels.push_back(node1_label + ">" + node2_label + 
                                                     ">" + node3_label);
             }
         }
    }
 
-   cout << "minlen " << minlen << endl;
    paths = alphabet[alphabet.size()-1];
    for (string path_label : path_labels) {
        paths += alphabet[alphabet.size()-1] + path_label + alphabet[alphabet.size()-1] +alphabet[alphabet.size()-1]; // ambiguous left and right
@@ -730,6 +730,10 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in,string path_prefix)
     output << ">nodes" << endl;
     maxMEM = explore_mems<T,TS>(nidx,qidx,idx,output);
     cout << "Maximum node MEM is of length " << maxMEM << endl;
+    auto tend_node_mem = high_resolution_clock::now();
+    ulint node_mem_time = duration_cast<microseconds>(tend_node_mem-tmem).count(); 
+    cout << "Node MEM exploration time     : " << node_mem_time << " microseconds" << endl;
+
     output << ">edges" << endl;
     if (!asymmetric)
        maxMEM = explore_mems<T,TS>(eidx,qidx,idx,output,false,d_edge_bwt,rmq_edge,sa_edge);    
@@ -737,13 +741,20 @@ void find_mems(ifstream& in, ifstream& qin, ifstream& efg_in,string path_prefix)
        maxMEM = explore_mems<T,TS>(eidx,qidx,nidx,output,true,d_edge_bwt,rmq_edge,sa_edge);    
     cout << "Maximum edge MEM is of length " << maxMEM << endl;
     output << ">paths" << endl;
-    string lextpaths = "";
-    string rextpaths = "";
+    auto tend_edge_mem = high_resolution_clock::now();
+    ulint edge_mem_time = duration_cast<microseconds>(tend_edge_mem-tend_node_mem).count(); 
+    cout << "Edge MEM exploration time     : " << edge_mem_time << " microseconds" << endl;
+
+    //string lextpaths = "";
+    //string rextpaths = "";
     if (!asymmetric) // using text index as filter, if filter=true
        maxMEM = explore_mems<T,TS>(pidx,qidx,idx,output,filter,d_path_bwt,rmq_path,sa_path);        
     else // using edge index as filter
        maxMEM = explore_mems<T,TS>(pidx,qidx,eidx,output,true,d_path_bwt,rmq_path,sa_path);           
     cout << "Maximum path MEM (spanning 3 nodes) is of length " << maxMEM << endl;
+    auto tend_path_mem = high_resolution_clock::now();
+    ulint path_mem_time = duration_cast<microseconds>(tend_path_mem-tend_edge_mem).count(); 
+    cout << "Path MEM exploration time     : " << path_mem_time << " microseconds" << endl;
     // TODO
     // maxMEM = exploreLongPathMEMs();
     // cout << "Maximum path MEM (spanning more than 3 nodes) is of length " << maxMEM << endl;
