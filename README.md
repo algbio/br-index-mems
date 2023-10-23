@@ -2,6 +2,10 @@
 
 ## News
 
+Latest version of this tool can be found in https://github.com/algbio/efg-mems.
+
+This repository contains a version described in WABI 2023 paper by Rizzo, Cáceres, Mäkinen (see below).
+
 This is fork of Yuma Arakawa's br-index, adding support for MEM finding:
 
 - Support for finding maximal exact matches (MEMs) between a set of query patterns and a text
@@ -110,6 +114,6 @@ MEM finding is analogous to Algorithm 11.3 at page 226 in
 Linear-time String Indexing and Analysis in Small Space. ACM Trans. Algorithms 16(2): 17:1-17:54 (2020)
 
 MEM finding on EFGs is described in 
-- Nicola Rizzo, Manuel Cáceres, Veli Mäkinen: Finding Maximal Exact Matches in Graphs. Submitted manuscript.
+- Nicola Rizzo, Manuel Cáceres, Veli Mäkinen: Finding Maximal Exact Matches in Graphs. In Proc. WABI 2023, LIPIcs 273, Schloss Dagstuhl - Leibniz-Zentrum für Informatik, 10:1-10:17, 2023.
 - Current version implements only MEM finding on paths of length at most 3 nodes, so if k>min_{paths P of 3 nodes} |label(P)|, some MEMs may not be reported  
 
